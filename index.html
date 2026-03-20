@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visor Geográfico de Territorios</title>
+    <title>Visor Geográfico de Riesgos Territoriales</title>
     <link rel="icon" href="logo_koala.png" type="image/x-icon">
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -110,6 +110,84 @@
                 border: 2px solid black !important; border-top: none !important; color: black !important; background: rgba(255, 255, 255, 0.7) !important;
             }
         }
+       /* =========================================================
+           DISEÑO TEMÁTICO: PÍLDORAS Y CHECKLIST
+           ========================================================= */
+        .contenedor-pildora-invisible { background: transparent; border: none; box-shadow: none; }
+        
+        .pildora-metricas {
+            display: flex; gap: 3px; background: rgba(255, 255, 255, 0.9);
+            padding: 3px 6px; border-radius: 12px; border: 1px solid #999;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3); justify-content: center;
+            align-items: center; pointer-events: none; white-space: nowrap;
+        }
+        
+        .punto-metrica { width: 10px; height: 10px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,0.2); }
+
+        .popup-tematico { font-family: 'Segoe UI', Tahoma, sans-serif; min-width: 220px; }
+        .popup-tematico h4 { margin: 0 0 10px 0; color: #2c3e50; border-bottom: 2px solid #2c3e50; padding-bottom: 5px; font-size: 14px; }
+        .lista-metricas { list-style: none; padding: 0; margin: 0; font-size: 12px; }
+        .lista-metricas li { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px dashed #eee; }
+        .lista-metricas li:last-child { border-bottom: none; }
+        .lista-metricas .etiqueta-bolita { display: flex; align-items: center; gap: 8px; }
+        
+        .link-metodologia { color: #34495e; text-decoration: none; cursor: help; transition: color 0.2s; }
+        .link-metodologia:hover { color: #3498db; text-decoration: underline; }
+
+        .valor-metrica { font-weight: bold; color: #333; }
+        .metrica-vacia { opacity: 0.4; filter: grayscale(100%); }
+        /* =========================================================
+           DISEÑO DEL PANEL LATERAL DESPLEGABLE
+           ========================================================= */
+        .panel-lateral {
+            position: fixed;
+            top: 0;
+            right: -420px; /* Escondido a la derecha de la pantalla */
+            width: 400px;
+            max-width: 100vw; /* Para que no se rompa en celulares */
+            height: 100vh;
+            background-color: #fcfcfc;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.3);
+            transition: right 0.3s ease-in-out;
+            z-index: 2000; /* Flota sobre el mapa y el footer */
+            padding: 25px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            border-left: 4px solid #2c3e50;
+        }
+
+        /* Esta clase la agregaremos con JS para que el panel se deslice hacia adentro */
+        .panel-lateral.abierto {
+            right: 0;
+        }
+
+        .btn-cerrar-panel {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            width: 30px;
+            height: 30px;
+            font-size: 16px;
+            cursor: pointer;
+            float: right;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .btn-cerrar-panel:hover {
+            background: #c0392b;
+        }
+
+        #contenido-metodologia {
+            margin-top: 40px;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            color: #333;
+            line-height: 1.6;
+        }
+        #contenido-metodologia h3 {
+            color: #2c3e50;
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 5px;
+        }
     </style>
 </head>
 <body>
@@ -128,7 +206,12 @@
     <button id="btn-reset-vista" onclick="window.resetearVista()">Restablecer Vista</button>
     <div id="map"></div>
     <div id="coordenadas-puntero">Lat: 0.000000 | Lng: 0.000000</div>
-    <div id="footer"><img src="logo.jpg" alt="Logotipo"></div>
+    <div id="footer"><img src="logo.png" alt="Logotipo"></div>
+    <div id="panel-metodologia" class="panel-lateral">
+        <button class="btn-cerrar-panel" onclick="cerrarPanel()">✖</button>
+        <div id="contenido-metodologia">
+            </div>
+    </div>
     <script src="app.js"></script>
 </body>
 </html>
