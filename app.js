@@ -514,13 +514,28 @@ map.pm.setGlobalOptions({ measurements: { measurement: false }, pathOptions: { c
 map.on('pm:create', function(e) {
     const capa = e.layer;
     let textoMedida = "";
+    
+    // MAGIA AQUI: Creamos el contenedor de propiedades para que el GeoJSON pueda guardar datos
+    capa.feature = capa.feature || { type: 'Feature', properties: {} };
+
     try {
         if (e.shape === 'Marker') {
             let nombre = prompt("Nombre del punto:", "Nuevo Punto");
-            if (nombre) capa.bindTooltip(nombre, { permanent: true, direction: 'top', offset: [0, -25], className: 'etiqueta-punto' }).openTooltip();
-            else capa.bindPopup("Punto sin nombre"); return;
+            if (nombre) {
+                capa.bindTooltip(nombre, { permanent: true, direction: 'top', offset: [0, -25], className: 'etiqueta-punto' }).openTooltip();
+                
+                // Guardamos el nombre ingresado directamente en el archivo GeoJSON
+                capa.feature.properties.nombre = nombre;
+                capa.feature.properties.tipo = "Marcador Táctico";
+            }
+            else {
+                capa.bindPopup("Punto sin nombre"); 
+                capa.feature.properties.nombre = "Punto sin nombre";
+            }
+            return;
         }
         if (e.shape === 'Text') return; 
+        
         const geojson = capa.toGeoJSON();
         if (e.shape === 'Polygon' || e.shape === 'Rectangle') {
             const areaM2 = turf.area(geojson); textoMedida = areaM2 > 10000 ? (areaM2 / 10000).toFixed(2) + " hectáreas" : areaM2.toFixed(2) + " m²";
@@ -529,7 +544,14 @@ map.on('pm:create', function(e) {
         } else if (e.shape === 'Circle') {
             const areaCirculo = Math.PI * Math.pow(capa.getRadius(), 2); textoMedida = areaCirculo > 10000 ? (areaCirculo / 10000).toFixed(2) + " hectáreas" : areaCirculo.toFixed(2) + " m²";
         }
-        if (textoMedida !== "") capa.bindTooltip(textoMedida, { permanent: true, direction: 'center', className: 'etiqueta-medida' }).openTooltip();
+        
+        if (textoMedida !== "") {
+            capa.bindTooltip(textoMedida, { permanent: true, direction: 'center', className: 'etiqueta-medida' }).openTooltip();
+            
+            // También guardamos las mediciones de áreas o distancias en el GeoJSON
+            capa.feature.properties.medida = textoMedida;
+            capa.feature.properties.tipo = e.shape;
+        }
     } catch (error) { console.error(error); }
 });
 
