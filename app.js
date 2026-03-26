@@ -617,27 +617,56 @@ const ControlCapas = L.Control.extend({
     options: { position: 'topright' },
     onAdd: function () {
         const div = L.DomUtil.create('div', 'panel-capas-custom leaflet-control');
-        L.DomEvent.disableClickPropagation(div); // Evita que al dar clic en el menú, le des clic al mapa de fondo
+        L.DomEvent.disableClickPropagation(div); // Evita clics fantasma en el mapa
+        
+        // Ajustamos el padding inicial para que se vea compacto cuando está cerrado
+        div.style.paddingBottom = '5px'; 
         
         div.innerHTML = `
-            <div class="titulo-capas">📋 Capas Tácticas</div>
-            <div class="opcion-capa">
-                <input type="checkbox" id="chk-colonias" checked>
-                <label for="chk-colonias">🛡️ Nivel de Riesgo (Colonias)</label>
+            <div class="titulo-capas" id="btn-toggle-capas" title="Minimizar/Maximizar" style="cursor: pointer; margin-bottom: 0; display: flex; justify-content: space-between; align-items: center; border-bottom: none;">
+                <span>📋 Capas Tácticas</span>
+                <span id="flecha-capas" style="font-size: 10px; margin-left: 15px;">▼</span>
             </div>
-            <div class="opcion-capa">
-                <input type="checkbox" id="chk-rutas">
-                <label for="chk-rutas">🛣️ Corredores de Movilidad</label>
-            </div>
-            <div class="opcion-capa">
-                <input type="checkbox" id="chk-infra">
-                <label for="chk-infra">✈️ Infraestructura Crítica</label>
-            </div>
-            <div class="opcion-capa">
-                <input type="checkbox" id="chk-pueblos">
-                <label for="chk-pueblos">✨ Pueblos Mágicos</label>
+            
+            <div id="contenedor-opciones-capas" style="margin-top: 10px; display: none; border-top: 2px solid #2c3e50; padding-top: 10px;">
+                <div class="opcion-capa">
+                    <input type="checkbox" id="chk-colonias" checked>
+                    <label for="chk-colonias">🛡️ Nivel de Riesgo (Colonias)</label>
+                </div>
+                <div class="opcion-capa">
+                    <input type="checkbox" id="chk-rutas">
+                    <label for="chk-rutas">🛣️ Corredores de Movilidad</label>
+                </div>
+                <div class="opcion-capa">
+                    <input type="checkbox" id="chk-infra">
+                    <label for="chk-infra">✈️ Infraestructura Crítica</label>
+                </div>
+                <div class="opcion-capa">
+                    <input type="checkbox" id="chk-pueblos">
+                    <label for="chk-pueblos">✨ Pueblos Mágicos</label>
+                </div>
             </div>
         `;
+        
+        // La lógica mágica para expandir y contraer
+        const btnToggle = div.querySelector('#btn-toggle-capas');
+        const contenedor = div.querySelector('#contenedor-opciones-capas');
+        const flecha = div.querySelector('#flecha-capas');
+        
+        btnToggle.addEventListener('click', () => {
+            if (contenedor.style.display === 'none') {
+                // Si está cerrado, lo abrimos
+                contenedor.style.display = 'block';
+                flecha.innerHTML = '▲';
+                div.style.paddingBottom = '12px'; // Le damos espacio abajo
+            } else {
+                // Si está abierto, lo cerramos
+                contenedor.style.display = 'none';
+                flecha.innerHTML = '▼';
+                div.style.paddingBottom = '5px'; // Lo hacemos compacto
+            }
+        });
+
         return div;
     }
 });
