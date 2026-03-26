@@ -146,7 +146,7 @@ Promise.all([
     fetch('carreteras.geojson').then(res => res.json()),
     fetch('estaciones.geojson').then(res => res.json()),
     fetch('pueblos_magicos.geojson').then(res => res.json()),
-    fetch('EstrcturaC.geojson').then(res => res.json())
+    fetch('estrcturac.geojson').then(res => res.json())
 ]).then(([dataMunicipios, dataColonias, dataCarreteras, dataEstaciones, dataPueblosMagicos, dataInfraestructura]) => {
     
     // --- PRE-PROCESAMIENTO: ESCANEO DE MUNICIPIOS ACTIVOS ---

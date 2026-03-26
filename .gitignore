@@ -1,0 +1,7 @@
+# Ignorar archivos temporales y metadatos de QGIS
+*.qmd
+*.cpg
+*.dbf
+*.prj
+*.shx
+*.shp
