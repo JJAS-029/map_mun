@@ -188,6 +188,43 @@
             border-bottom: 2px solid #ccc;
             padding-bottom: 5px;
         }
+/* =========================================================
+           DISEÑO DEL PANEL DE CAPAS (FASE 2)
+           ========================================================= */
+        .panel-capas-custom {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            font-size: 13px;
+            color: #333;
+            border: 1px solid #ccc;
+        }
+        .titulo-capas {
+            font-weight: bold;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 5px;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+        .opcion-capa {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .opcion-capa label {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .opcion-capa label:hover {
+            color: #2980b9;
+        }
+        /* Ocultamos este menú a la hora de imprimir */
+        @media print { .panel-capas-custom { display: none !important; } }
+
     </style>
 </head>
 <body>

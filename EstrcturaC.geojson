@@ -1,0 +1,12 @@
+{
+"type": "FeatureCollection",
+"name": "EstrcturaC",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "PuntoC": "Aeropuerto Internacional de Toluca" }, "geometry": { "type": "Point", "coordinates": [ -99.571236220179003, 19.338227907293501 ] } },
+{ "type": "Feature", "properties": { "PuntoC": "Estadio \"Nemesio Diez\"" }, "geometry": { "type": "Point", "coordinates": [ -99.666916361268093, 19.287361166671701 ] } },
+{ "type": "Feature", "properties": { "PuntoC": "Federacion Mexicana de Fútbol" }, "geometry": { "type": "Point", "coordinates": [ -99.5884377113413, 19.360855233312599 ] } },
+{ "type": "Feature", "properties": { "PuntoC": "Hotel Double Tree by Hilton" }, "geometry": { "type": "Point", "coordinates": [ -99.626471091073697, 19.302492369300001 ] } },
+{ "type": "Feature", "properties": { "PuntoC": "Aeropuerto Internacional \"Gral. Felipe Ángles\"" }, "geometry": { "type": "Point", "coordinates": [ -99.026464849642096, 19.7352455932871 ] } }
+]
+}

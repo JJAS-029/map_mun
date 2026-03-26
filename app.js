@@ -4,21 +4,77 @@
 const CONFIG = {
     centroInicial: [19.4326, -99.1332],
     zoomInicial: 9,
-    zoomEtiquetasMun: 10,
+    zoomEtiquetasMun: 12,
     zoomParaColonias: 11, 
-    zoomParaPildoras: 13, // <--- Nuevo: Nivel de zoom para mostrar las bolitas flotantes
+    zoomParaPildoras: 15, // <--- Nuevo: Nivel de zoom para mostrar las bolitas flotantes
     passCorrecto: "2026_SS12"
 };
 
 // DICCIONARIO DE MÉTRICAS (Orden estricto, colores y textos de metodología)
 const METRICAS = [
-    { id: 'INCIDENCIA', nombre: 'Incidencia delictiva', color: '#bf9000', texto: 'Aquí va la explicación metodológica sobre cómo se calculan las carpetas de investigación y los índices delictivos para esta variable...' },
-    { id: 'DO', nombre: 'Delincuencia Organizada', color: '#7030a0', texto: 'Descripción de los factores de riesgo asociados a crímenes de alto impacto, cárteles y violencia sistemática...' },
-    { id: 'POB_VIAL', nombre: 'Población y vialidades', color: '#92deba', texto: 'Suma de los índices de densidad poblacional cruzados con la conectividad de la red vial principal y secundaria...' },
-    { id: 'CONF_SOC', nombre: 'Conflictividad social', color: '#cc3399', texto: 'Detalles sobre factores de descomposición social, manifestaciones, riñas y reportes ciudadanos...' },
-    { id: 'CARAC_FIS', nombre: 'Características físicas', color: '#00b0f0', texto: 'Evaluación del entorno urbano: alumbrado público, lotes baldíos, estado de las banquetas y espacios recuperados...' },
-    { id: 'UNID_ECO', nombre: 'Unidades económicas', color: '#0f395f', texto: 'Análisis de la densidad comercial, giros negros y vulnerabilidad de negocios ante la extorsión...' }
+    { 
+        id: 'INCIDENCIA', 
+        nombre: 'Incidencia delictiva', 
+        color: '#bf9000', 
+        texto: 'Se genera a partir del reporte mensual de denuncias de delitos y extorsión, obteniendo el total de delitos por municipio, colonia y vialidades mediante fuentes como el 9-1-1 y 089. Esta variable aporta el 30% del riesgo total general.' 
+    },
+    { 
+        id: 'DO', 
+        nombre: 'Delincuencia Organizada', 
+        color: '#7030a0', 
+        texto: 'Identifica la presencia, rutas de traslado y control de territorios por grupos delictivos, incluyendo riesgos de extorsión y tráfico de drogas, armas y personas. Se basa en fuentes abiertas y de la Unidad de Análisis Criminal, y representa el 10% del nivel de vulnerabilidad.' 
+    },
+    { 
+        id: 'POB_VIAL', 
+        nombre: 'Población y vialidades', 
+        color: '#92deba', 
+        texto: 'Integra proyecciones de población a nivel AGEB (INEGI) y el cálculo de la conectividad urbana de vialidades periféricas mediante técnicas de Space Syntax. En conjunto, la población (5%) y las vialidades (15%) representan el 20% de la ponderación total.' 
+    },
+    { 
+        id: 'CONF_SOC', 
+        nombre: 'Conflictividad social', 
+        color: '#cc3399', 
+        texto: 'Considera las movilizaciones sociales (temas político-sociales, movimientos civiles y grupos de choque) que pudieran replicarse en las zonas de análisis. Su valor es del 20%, dividido equitativamente entre la presencia de organizaciones y la gravedad del tipo de evento (manifestaciones, bloqueos, etc.).' 
+    },
+    { 
+        id: 'CARAC_FIS', 
+        nombre: 'Características físicas', 
+        color: '#00b0f0', 
+        texto: 'Identifica zonas susceptibles a inundaciones basándose en su topografía y cercanía a cuerpos de agua, utilizando el Atlas Nacional de Riesgos y modelos hidrológicos. Este factor de riesgo hidrometeorológico equivale al 10% del total.' 
+    },
+    { 
+        id: 'UNID_ECO', 
+        nombre: 'Unidades económicas', 
+        color: '#0f395f', 
+        texto: 'Evalúa la concentración de infraestructuras clave (hospitales, plazas comerciales, bares) cuya densidad poblacional o valor estratégico incrementa la vulnerabilidad y la presión sobre los servicios de emergencia. Aporta el 10% al cálculo del mapa.' 
+    }
 ];
+
+// DICCIONARIO DE RUTAS DE MOVILIDAD
+const RUTAS_CONFIG = {
+    1: { nombre: "Carretera al Aeropuerto (AIFA)", color: "#004aad" },
+    2: { nombre: "Toluca - México", color: "#356854" },
+    3: { nombre: "Naucalpan - Toluca", color: "#ff751f" },
+    4: { nombre: "La Marquesa - México", color: "#7695ff" },
+    5: { nombre: "Tren Interurbano", color: "#e8d961" }
+};
+
+// DICCIONARIO DE PUEBLOS MÁGICOS
+const PUEBLOS_CONFIG = {
+    'ACULCO': '#5bb0cd', 'EL ORO': '#b8cc1e', 'IXTAPAN DE LA SAL': '#62ea5e',
+    'JILOTEPEC': '#d10fd8', 'MALINALCO': '#1bcdac', 'METEPEC': '#df379f',
+    'OTUMBA': '#8d82e7', 'SAN MARTÍN DE LAS PIRÁMIDES': '#b578eb',
+    'TEOTIHUACÁN': '#83eaac', 'TEPOTZOTLÁN': '#d00f32', 'TONATICO': '#e8c888',
+    'VALLE DE BRAVO': '#7d98d1', 'VILLA DEL CARBÓN': '#6ccc19'
+};
+
+// Agrega estas variables junto a tus otras capas (capaRutas, capaEstaciones, etc.)
+let capaMunicipiosMagicos;
+let capaPuntosMagicos;
+let capaInfraestructura;
+let capaRutas;
+
+
 
 // FUNCIÓN PARA EL SEMÁFORO DEL POLÍGONO
 function getColorPondera(valor) {
@@ -78,7 +134,7 @@ map.addControl(new ControlUbicacion());
 map.on('locationfound', e => L.circleMarker(e.latlng, { radius: 8, fillColor: "#2c3e50", color: "#fff", weight: 2, fillOpacity: 0.8 }).addTo(map).bindPopup("Estás aquí").openPopup());
 
 // =========================================================
-// --- 4. CARGA DE POLÍGONOS TEMÁTICOS ---
+// --- 4. CARGA DE POLÍGONOS TEMÁTICOS (FASE 1: Filtro Dinámico) ---
 // =========================================================
 let capaMunicipios, capaColonias;
 let capaPildoras = L.layerGroup(); // Grupo para encender/apagar todas las bolitas juntas
@@ -86,49 +142,87 @@ window.coloniaSeleccionada = null;
 
 Promise.all([
     fetch('municipios.geojson').then(res => res.json()),
-    fetch('colonias.geojson').then(res => res.json())
-]).then(([dataMunicipios, dataColonias]) => {
+    fetch('colonias.geojson').then(res => res.json()),
+    fetch('carreteras.geojson').then(res => res.json()),
+    fetch('estaciones.geojson').then(res => res.json()),
+    fetch('pueblos_magicos.geojson').then(res => res.json()),
+    fetch('EstrcturaC.geojson').then(res => res.json())
+]).then(([dataMunicipios, dataColonias, dataCarreteras, dataEstaciones, dataPueblosMagicos, dataInfraestructura]) => {
     
+    // --- PRE-PROCESAMIENTO: ESCANEO DE MUNICIPIOS ACTIVOS ---
+    window.municipiosActivos = new Set(); // Ahora es global
+    dataColonias.features.forEach(f => {
+        let p = f.properties;
+        if (p.pondera && ['Prioritaria', 'Alta', 'Media', 'Baja'].includes(p.pondera.trim())) {
+            if (p.nom_mun) window.municipiosActivos.add(p.nom_mun.toUpperCase());
+        }
+    });
+
+    // Función dinámica para colorear municipios según el zoom
+    window.estiloMunicipio = function(feature) {
+        let nombreMun = feature.properties.nom_mun ? feature.properties.nom_mun.toUpperCase() : '';
+        let zoom = map.getZoom();
+        
+        if (window.municipiosActivos.has(nombreMun)) {
+            // Si nos acercamos a las colonias, quitamos el fondo azul (para no simular agua)
+            if (zoom >= CONFIG.zoomParaColonias) {
+                return { color: '#2c3e50', weight: 2, fillColor: 'transparent', fillOpacity: 0 };
+            } else {
+                // Si estamos lejos, destacamos el municipio en azul
+                return { color: '#2980b9', weight: 2.5, fillColor: '#3498db', fillOpacity: 0.15 };
+            }
+        }
+        return { color: '#333', weight: 1.5, fillColor: '#333', fillOpacity: 0.05 };
+    };
+
+    // --- A. CAPA DE MUNICIPIOS ---
     capaMunicipios = L.geoJSON(dataMunicipios, {
-        pmIgnore: true, style: { color: '#333', weight: 1.5, fillColor: '#333', fillOpacity: 0.05 },
+        pmIgnore: true, 
+        style: window.estiloMunicipio, // Usamos la nueva función
         onEachFeature: function (feature, layer) {
-            if (feature.properties && feature.properties.nom_mun) layer.bindTooltip(feature.properties.nom_mun, { permanent: true, direction: "center", className: "etiqueta-municipio" });
-            layer.on('click', function() { map.fitBounds(layer.getBounds()); document.getElementById('btn-reset-vista').style.display = 'block'; });
+            if (feature.properties && feature.properties.nom_mun) {
+                layer.bindTooltip(feature.properties.nom_mun, { permanent: true, direction: "center", className: "etiqueta-municipio" });
+            }
+            layer.on('click', function() { 
+                map.fitBounds(layer.getBounds()); 
+                document.getElementById('btn-reset-vista').style.display = 'block'; 
+            });
         }
     }).addTo(map);
 
+    // --- B. CAPA DE COLONIAS (Filtrada inteligentemente) ---
     capaColonias = L.geoJSON(dataColonias, {
         pmIgnore: true, 
+        filter: function(feature) {
+            // EL FILTRO MÁGICO: Solo permite dibujar la colonia si su municipio está en la lista de activos
+            let nombreMun = feature.properties.nom_mun ? feature.properties.nom_mun.toUpperCase() : '';
+            return municipiosActivos.has(nombreMun);
+        },
         style: function(feature) {
             let colorSemoforo = getColorPondera(feature.properties.pondera);
             if (colorSemoforo) {
-                // Si tiene ponderación, la pintamos con el color de riesgo
                 return { color: '#666', weight: 1.5, fillColor: colorSemoforo, fillOpacity: 0.55 };
             } else {
-                // Si no tiene, se queda transparente con borde punteado
                 return { color: '#888', weight: 1.5, dashArray: '4, 4', fillColor: '#fff', fillOpacity: 0.01 };
             }
         },
         onEachFeature: function (feature, layer) {
             let p = feature.properties;
             let nombre = p.nom_col || 'S/N';
-            
             // 1. Extraer y sumar métricas (Truncando a 2 decimales)
             const fNum = (num) => parseFloat(Number(num).toFixed(2)); // Herramienta de redondeo
             
             let vals = {
                 'INCIDENCIA': fNum(p['INCIDENCIA'] || 0),
                 'DO': fNum(p['DO'] || 0),
-                'POB_VIAL': fNum((parseFloat(p['POB']) || 0) + (parseFloat(p['RED VIAL']) || 0)), // La suma mágica
+                'POB_VIAL': fNum((parseFloat(p['POB']) || 0) + (parseFloat(p['RED VIAL']) || 0)), 
                 'CONF_SOC': fNum(p['CONF_SOC'] || 0),
                 'CARAC_FIS': fNum(p['CARAC_FIS'] || 0),
                 'UNID_ECO': fNum(p['UNID_ECO'] || 0)
             };
-            
             // Calculamos el total y también lo redondeamos
             let totalBruto = p['TOTAL'] !== null ? parseFloat(p['TOTAL']) : Object.values(vals).reduce((a, b) => a + b, 0);
             let total = fNum(totalBruto);
-
             // 2. Construir HTML del Popup y la Píldora Visual
             let popupHTML = `<div class="popup-tematico"><h4>Colonia: ${nombre}</h4><ul class="lista-metricas">`;
             let pildoraHTML = '';
@@ -139,7 +233,6 @@ Promise.all([
                 let isVacio = valor === 0;
                 let claseVacia = isVacio ? 'metrica-vacia' : '';
                 let displayVal = isVacio ? '-' : valor;
-
                 // Agregar al checklist del globo (CON ENLACE AL PANEL)
                 popupHTML += `
                     <li class="${claseVacia}">
@@ -156,7 +249,6 @@ Promise.all([
                     tieneBolitas = true;
                 }
             });
-
             // Cerrar el HTML del popup con el Total
             popupHTML += `
                 <li style="margin-top: 8px; border-top: 2px solid #ccc; padding-top: 6px;">
@@ -165,16 +257,6 @@ Promise.all([
                 </li></ul></div>`;
 
             layer.bindPopup(popupHTML);
-
-            // Cerrar el HTML del popup con el Total
-            popupHTML += `
-                <li style="margin-top: 8px; border-top: 2px solid #ccc; padding-top: 6px;">
-                    <strong>TOTAL</strong>
-                    <strong style="font-size: 14px; color: ${getColorPondera(p.pondera) || '#333'};">${total}</strong>
-                </li></ul></div>`;
-
-            layer.bindPopup(popupHTML);
-
             // 3. Crear el marcador de Píldora en el Centroide de la colonia
             if (tieneBolitas) {
                 try {
@@ -182,19 +264,17 @@ Promise.all([
                     let iconoPildora = L.divIcon({
                         className: 'contenedor-pildora-invisible', 
                         html: `<div class="pildora-metricas">${pildoraHTML}</div>`,
-                        iconSize: null, // Que el navegador decida el tamaño
-                        iconAnchor: [25, 12] // Para centrarlo visualmente
+                        iconSize: null, 
+                        iconAnchor: [25, 12] 
                     });
                     // Agregamos el marcador al LayerGroup, no al mapa directo
                     L.marker([centroide[1], centroide[0]], { icon: iconoPildora, interactive: false }).addTo(capaPildoras);
-                } catch(e) { console.error("Error calculando centroide", e); }
+                } catch(e) {}
             }
-
             // 4. Interacción al hacer Clic (Destacar)
             layer.on('click', function(e) {
                 if (window.coloniaSeleccionada) capaColonias.resetStyle(window.coloniaSeleccionada);
                 window.coloniaSeleccionada = layer;
-                
                 // Lo pintamos de cian pero conservamos algo del color de fondo si lo tiene
                 let tieneFondo = p.pondera && p.pondera.trim() !== '';
                 layer.setStyle({ color: '#00FFFF', weight: 4, dashArray: '', fillOpacity: tieneFondo ? 0.75 : 0.15 });
@@ -209,9 +289,179 @@ Promise.all([
     document.getElementById('loader-overlay').style.display = 'none';
     controlarZoom();
 
+
+// --- C. CAPA DE RUTAS DE MOVILIDAD (FASE 3) ---
+    capaRutas = L.geoJSON(dataCarreteras, {
+        pmIgnore: true,
+        style: function(feature) {
+            let idRuta = feature.properties.objectid;
+            let config = RUTAS_CONFIG[idRuta];
+            if (config) {
+                // Le damos un grosor de 5 para que parezcan autopistas importantes
+                return { color: config.color, weight: 5, opacity: 0.9 };
+            }
+            return { color: '#888', weight: 3, opacity: 0.5 }; // Por si hay una línea sin ID
+        },
+        onEachFeature: function(feature, layer) {
+            let p = feature.properties;
+            let idRuta = p.objectid;
+            let config = RUTAS_CONFIG[idRuta];
+            
+            let nombreOficial = p.nombrevial || 'Vía sin nombre';
+            let nombreRuta = config ? config.nombre : 'Ruta Desconocida';
+
+            // 1. Etiqueta flotante que sigue al mouse (Tooltip)
+            layer.bindTooltip(`
+                <div style="text-align: center; min-width: 150px;">
+                    <b style="color:${config ? config.color : '#333'}; font-size:14px;">${nombreRuta}</b><br>
+                    <span style="font-size:11px; color:#666;">Tramo: ${nombreOficial}</span>
+                </div>
+            `, { sticky: true, className: 'etiqueta-ruta' });
+
+            // 2. Acción de clic (Abre el panel de Planificación de viaje)
+            layer.on('click', function(e) {
+                // Efecto visual: la línea "brilla" al darle clic
+                layer.setStyle({ weight: 8, color: '#00ffff' });
+                setTimeout(() => capaRutas.resetStyle(layer), 1500);
+
+                // Mandamos llamar al panel pasándole el ID de la imagen, el nombre y el color
+                window.abrirPanelRuta(idRuta, nombreRuta, config ? config.color : '#333');
+            });
+        }
+    });
+
+    // Ocultar pantalla de carga e iniciar
+    document.getElementById('loader-overlay').style.display = 'none';
+    controlarZoom();
+
+
+// --- D. CAPA DE ESTACIONES DEL TREN (Se prende junto con las rutas) ---
+    capaEstaciones = L.geoJSON(dataEstaciones, {
+        pmIgnore: true,
+        pointToLayer: function(feature, latlng) {
+            // Creamos un marcador HTML personalizado con el emoji del tren
+            let iconoTren = L.divIcon({
+                className: 'icono-estacion-tren',
+                html: `<div style="font-size: 18px; background: white; border-radius: 50%; border: 3px solid #e8d961; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 6px rgba(0,0,0,0.4);">🚆</div>`,
+                iconSize: [38, 38], // Tamaño total del contenedor
+                iconAnchor: [19, 19] // Centrado exacto en la coordenada
+            });
+            return L.marker(latlng, {icon: iconoTren});
+        },
+        onEachFeature: function(feature, layer) {
+            let nombreEstacion = feature.properties.Estacion || 'Estación sin nombre';
+            
+            // Le ponemos su globo de texto que aparece al pasar el mouse
+            layer.bindTooltip(`
+                <div style="text-align: center;">
+                    <b style="color:#2c3e50; font-size:13px;">🚆 Estación Interurbano</b><br>
+                    <span style="font-size:12px; color:#666;">${nombreEstacion}</span>
+                </div>
+            `, { direction: 'top', offset: [0, -15], className: 'etiqueta-ruta' });
+        }
+    });
+
+// --- E. CAPA DE MUNICIPIOS MÁGICOS (Polígonos reciclados) ---
+    capaMunicipiosMagicos = L.geoJSON(dataMunicipios, {
+        pmIgnore: true,
+        interactive: false, // Lo hacemos 'fantasma' para que los clics pasen hacia las colonias o puntos
+        filter: function(feature) {
+            let nom = feature.properties.nom_mun ? feature.properties.nom_mun.toUpperCase() : '';
+            return PUEBLOS_CONFIG[nom] !== undefined; // Solo permite pasar a los de la lista
+        },
+        style: function(feature) {
+            let nom = feature.properties.nom_mun.toUpperCase();
+            let colorPueblo = PUEBLOS_CONFIG[nom];
+            return { color: colorPueblo, weight: 2.5, fillColor: colorPueblo, fillOpacity: 0.25 };
+        }
+    });
+
+    // --- F. CAPA DE PUNTOS TURÍSTICOS (Lugares Emblemáticos) ---
+    capaPuntosMagicos = L.geoJSON(dataPueblosMagicos, {
+        pmIgnore: true,
+        pointToLayer: function(feature, latlng) {
+            let municipio = feature.properties.Municipio ? feature.properties.Municipio.toUpperCase() : '';
+            let colorPueblo = PUEBLOS_CONFIG[municipio] || '#333';
+            
+            // Un marcador circular elegante con un destello
+            let iconoTuristico = L.divIcon({
+                className: 'icono-pueblo-magico',
+                html: `<div style="font-size: 16px; background: white; border-radius: 50%; border: 3px solid ${colorPueblo}; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 6px rgba(0,0,0,0.4);">✨</div>`,
+                iconSize: [34, 34],
+                iconAnchor: [17, 17]
+            });
+            return L.marker(latlng, {icon: iconoTuristico});
+        },
+        onEachFeature: function(feature, layer) {
+            let municipio = feature.properties.Municipio ? feature.properties.Municipio.toUpperCase() : 'Desconocido';
+            let lugar = feature.properties["Lugar Emblemático"] || 'Lugar sin nombre';
+            let colorPueblo = PUEBLOS_CONFIG[municipio] || '#333';
+
+            layer.bindTooltip(`
+                <div style="text-align: center; min-width: 120px;">
+                    <b style="color:${colorPueblo}; font-size:13px;">${municipio}</b><br>
+                    <span style="font-size:12px; color:#666;">${lugar}</span>
+                </div>
+            `, { direction: 'top', offset: [0, -15], className: 'etiqueta-ruta' });
+
+            // Al darle clic, abrimos el panel táctico
+            layer.on('click', function() {
+                window.abrirPanelPueblo(lugar, municipio, colorPueblo);
+            });
+        }
+    });
+
+// --- G. CAPA DE INFRAESTRUCTURA CRÍTICA ---
+    capaInfraestructura = L.geoJSON(dataInfraestructura, {
+        pmIgnore: true,
+        pointToLayer: function(feature, latlng) {
+            let nombre = feature.properties.PuntoC || 'Punto Crítico';
+            let emoji = '🏢'; // Icono por defecto
+            let color = '#34495e';
+
+            // Asignamos iconos dinámicamente leyendo la columna PuntoC
+            let nomUpper = nombre.toUpperCase();
+            if(nomUpper.includes('AEROPUERTO') || nomUpper.includes('AIFA') || nomUpper.includes('AIT')) {
+                emoji = '✈️'; color = '#2980b9'; // Azul
+            } else if(nomUpper.includes('ESTADIO')) {
+                emoji = '🏟️'; color = '#c0392b'; // Rojo
+            } else if(nomUpper.includes('HOTEL')) {
+                emoji = '🏨'; color = '#f39c12'; // Naranja
+            } else if(nomUpper.includes('FEDERACIÓN') || nomUpper.includes('FMF')) {
+                emoji = '⚽'; color = '#27ae60'; // Verde
+            }
+
+            let iconoInfra = L.divIcon({
+                className: 'icono-infraestructura',
+                html: `<div style="font-size: 18px; background: white; border-radius: 50%; border: 3px solid ${color}; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.5);">${emoji}</div>`,
+                iconSize: [40, 40],
+                iconAnchor: [20, 20]
+            });
+            return L.marker(latlng, {icon: iconoInfra});
+        },
+        onEachFeature: function(feature, layer) {
+            let nombre = feature.properties.PuntoC || 'Infraestructura Crítica';
+
+            // El globo al pasar el mouse
+            layer.bindTooltip(`
+                <div style="text-align: center; min-width: 140px;">
+                    <b style="color:#2c3e50; font-size:13px;">Instalación Estratégica</b><br>
+                    <span style="font-size:12px; color:#666;">${nombre}</span>
+                </div>
+            `, { direction: 'top', offset: [0, -15], className: 'etiqueta-ruta' });
+
+            // Al darle clic, abrimos el panel lateral táctico
+            layer.on('click', function() {
+                window.abrirPanelInfraestructura(nombre);
+            });
+        }
+    });
+
 }).catch(error => {
-    document.getElementById('loader-overlay').innerHTML = `<h3 style="color:red;">Error cargando los mapas. Verifica los archivos GeoJSON.</h3>`;
+    console.error("Error cargando capas:", error);
+    document.getElementById('loader-overlay').innerHTML = `<h3 style="color:red;">Error cargando los mapas.</h3>`;
 });
+
 
 // =========================================================
 // --- 5. LÓGICA DE VISIBILIDAD (Píldoras y Etiquetas) ---
@@ -219,6 +469,8 @@ Promise.all([
 function controlarZoom() {
     let zoom = map.getZoom();
     let container = document.getElementById('map');
+
+    if (capaMunicipios) capaMunicipios.setStyle(window.estiloMunicipio);
     
     if (zoom >= CONFIG.zoomEtiquetasMun) container.classList.remove('ocultar-etiquetas');
     else container.classList.add('ocultar-etiquetas');
@@ -359,6 +611,106 @@ const ControlMetodologia = L.Control.extend({
 map.addControl(new ControlMetodologia());
 
 // =========================================================
+// --- PANEL DE CAPAS TÁCTICAS (FASE 2) ---
+// =========================================================
+const ControlCapas = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd: function () {
+        const div = L.DomUtil.create('div', 'panel-capas-custom leaflet-control');
+        L.DomEvent.disableClickPropagation(div); // Evita que al dar clic en el menú, le des clic al mapa de fondo
+        
+        div.innerHTML = `
+            <div class="titulo-capas">📋 Capas Tácticas</div>
+            <div class="opcion-capa">
+                <input type="checkbox" id="chk-colonias" checked>
+                <label for="chk-colonias">🛡️ Nivel de Riesgo (Colonias)</label>
+            </div>
+            <div class="opcion-capa">
+                <input type="checkbox" id="chk-rutas">
+                <label for="chk-rutas">🛣️ Corredores de Movilidad</label>
+            </div>
+            <div class="opcion-capa">
+                <input type="checkbox" id="chk-infra">
+                <label for="chk-infra">✈️ Infraestructura Crítica</label>
+            </div>
+            <div class="opcion-capa">
+                <input type="checkbox" id="chk-pueblos">
+                <label for="chk-pueblos">✨ Pueblos Mágicos</label>
+            </div>
+        `;
+        return div;
+    }
+});
+map.addControl(new ControlCapas());
+
+// Conectar el "switch" de Colonias a nuestro mapa
+document.addEventListener('change', function(e) {
+    if(e.target.id === 'chk-colonias') {
+        let zoom = map.getZoom();
+        if(e.target.checked) {
+            // Prender: Solo mostramos si el nivel de zoom es el correcto
+            if(zoom >= CONFIG.zoomParaColonias && capaColonias) map.addLayer(capaColonias);
+            if(zoom >= CONFIG.zoomParaPildoras && capaPildoras) map.addLayer(capaPildoras);
+        } else {
+            // Apagar: Las quitamos de la pantalla y limpiamos selecciones
+            if(window.coloniaSeleccionada && capaColonias) {
+                capaColonias.resetStyle(window.coloniaSeleccionada);
+                window.coloniaSeleccionada = null;
+                document.getElementById('btn-reset-vista').style.display = 'none';
+            }
+            if(map.hasLayer(capaColonias)) map.removeLayer(capaColonias);
+            if(map.hasLayer(capaPildoras)) map.removeLayer(capaPildoras);
+        }
+    }
+
+    if(e.target.id === 'chk-rutas') {
+        if(e.target.checked) {
+            // Si marcan la casilla, dibujamos las líneas
+            if(capaRutas && !map.hasLayer(capaRutas)) map.addLayer(capaRutas);
+        } else {
+            // Si desmarcan la casilla, las borramos del mapa
+            if(capaRutas && map.hasLayer(capaRutas)) map.removeLayer(capaRutas);
+        }}
+
+
+        // Conectar el switch de Rutas de Movilidad y Estaciones
+    if(e.target.id === 'chk-rutas') {
+        if(e.target.checked) {
+            // Prendemos las líneas de carreteras
+            if(capaRutas && !map.hasLayer(capaRutas)) map.addLayer(capaRutas);
+            // Prendemos los iconos de las estaciones
+            if(capaEstaciones && !map.hasLayer(capaEstaciones)) map.addLayer(capaEstaciones);
+        } else {
+            // Apagamos ambas cosas
+            if(capaRutas && map.hasLayer(capaRutas)) map.removeLayer(capaRutas);
+            if(capaEstaciones && map.hasLayer(capaEstaciones)) map.removeLayer(capaEstaciones);
+        }
+    }
+
+    // Conectar el switch de Pueblos Mágicos
+    if(e.target.id === 'chk-pueblos') {
+        if(e.target.checked) {
+            if(capaMunicipiosMagicos && !map.hasLayer(capaMunicipiosMagicos)) map.addLayer(capaMunicipiosMagicos);
+            if(capaPuntosMagicos && !map.hasLayer(capaPuntosMagicos)) map.addLayer(capaPuntosMagicos);
+        } else {
+            if(capaMunicipiosMagicos && map.hasLayer(capaMunicipiosMagicos)) map.removeLayer(capaMunicipiosMagicos);
+            if(capaPuntosMagicos && map.hasLayer(capaPuntosMagicos)) map.removeLayer(capaPuntosMagicos);
+        }
+    }
+
+// Conectar el switch de Infraestructura Crítica
+    if(e.target.id === 'chk-infra') {
+        if(e.target.checked) {
+            if(capaInfraestructura && !map.hasLayer(capaInfraestructura)) map.addLayer(capaInfraestructura);
+        } else {
+            if(capaInfraestructura && map.hasLayer(capaInfraestructura)) map.removeLayer(capaInfraestructura);
+        }
+    }
+
+    // NOTA: Los otros switches ('chk-rutas', etc.) los conectaremos en la Fase 3
+});
+
+// =========================================================
 // --- 8. LÓGICA DEL PANEL LATERAL DE METODOLOGÍA ---
 // =========================================================
 
@@ -423,4 +775,92 @@ window.abrirMetodologia = function(idMetrica) {
 window.cerrarPanel = function() {
     // Esconder el panel deslizándolo hacia afuera
     document.getElementById('panel-metodologia').classList.remove('abierto');
+};
+
+// NUEVA FUNCIÓN: Abre el panel con la tabla (imagen) de la ruta
+window.abrirPanelRuta = function(idRuta, nombreRuta, colorRuta) {
+    const contenido = document.getElementById('contenido-metodologia');
+    
+    // Armamos el HTML inyectando la etiqueta <img> que busca el archivo .png
+    contenido.innerHTML = `
+        <h3 style="border-bottom-color: ${colorRuta}; color: ${colorRuta};">
+            🛣️ Ruta: ${nombreRuta}
+        </h3>
+        <p style="font-size: 14px; color: #555; margin-bottom: 15px; text-align: justify;">
+            Ficha de planificación de viaje y vulnerabilidades identificadas en este corredor de movilidad.
+        </p>
+        <div style="text-align: center; margin-top: 15px;">
+            <img src="${idRuta}.png" alt="Tabla de datos ruta ${nombreRuta}" 
+                 style="max-width: 100%; height: auto; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+        </div>
+        <p style="font-size: 11px; color: #7f8c8d; margin-top: 15px;">
+            <i>* Para ver los detalles completos, amplía la imagen o consulta el documento matriz.</i>
+        </p>
+    `;
+
+    // Deslizamos el panel hacia adentro
+    document.getElementById('panel-metodologia').classList.add('abierto');
+};
+
+// NUEVA FUNCIÓN: Abre el panel para los Pueblos Mágicos
+window.abrirPanelPueblo = function(lugar, municipio, color) {
+    const contenido = document.getElementById('contenido-metodologia');
+    
+    contenido.innerHTML = `
+        <h3 style="border-bottom-color: ${color}; color: ${color};">
+            ✨ ${lugar}
+        </h3>
+        <h4 style="margin-top: 5px; color: #555;">Pueblo Mágico: ${municipio}</h4>
+        
+        <p style="font-size: 14px; color: #333; text-align: justify; margin-top: 15px;">
+            Durante el Mundial 2026, los Pueblos Mágicos y destinos turísticos del Estado de México podrían registrar incrementos atípicos en la afluencia, lo que eleva la exposición a delitos patrimoniales y de alto impacto, especialmente en zonas de alta concentración y accesos carreteros.
+        </p>
+        
+        <div style="background: #fdfdfd; border-left: 5px solid ${color}; padding: 12px; margin-top: 20px; font-size: 13px; color: #444; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+            <b style="color: #2c3e50;">🛡️ Acciones de reforzamiento táctico:</b><br><br>
+            • Implementación de operativos turísticos permanentes con presencia visible.<br>
+            • Vigilancia focalizada en estacionamientos, zonas arqueológicas, y áreas comerciales.<br>
+            • Coordinación para atención inmediata a denuncias (especialmente robo de vehículo).<br>
+            • Instalación de módulos de orientación con canales multilingües.<br>
+            • Uso de inteligencia preventiva para detectar extorsión o actividades encubiertas.
+        </div>
+    `;
+
+    document.getElementById('panel-metodologia').classList.add('abierto');
+};
+
+// NUEVA FUNCIÓN: Abre el panel para la Infraestructura Crítica
+window.abrirPanelInfraestructura = function(nombre) {
+    const contenido = document.getElementById('contenido-metodologia');
+    
+    // Asignamos colores y subtítulos al panel según el tipo
+    let color = '#34495e';
+    let tipo = 'Instalación Estratégica';
+    let nomUpper = nombre.toUpperCase();
+    
+    if(nomUpper.includes('AEROPUERTO')) { color = '#2980b9'; tipo = 'Nodo de Movilidad Internacional'; }
+    else if(nomUpper.includes('ESTADIO')) { color = '#c0392b'; tipo = 'Sede Deportiva'; }
+    else if(nomUpper.includes('HOTEL')) { color = '#f39c12'; tipo = 'Sede de Hospedaje'; }
+    else if(nomUpper.includes('FEDERACIÓN')) { color = '#27ae60'; tipo = 'Centro de Operaciones'; }
+
+    contenido.innerHTML = `
+        <h3 style="border-bottom-color: ${color}; color: ${color};">
+            🏢 ${nombre}
+        </h3>
+        <h4 style="margin-top: 5px; color: #555;">${tipo}</h4>
+        
+        <p style="font-size: 14px; color: #333; text-align: justify; margin-top: 15px;">
+            El diagnóstico operativo identifica a esta instalación como un nodo de máxima prioridad. Las sedes de hospedaje, aeropuertos y estadios requieren monitoreo permanente mediante perímetros de seguridad debido a la concentración masiva y la movilidad de delegaciones internacionales.
+        </p>
+        
+        <div style="background: #fdfdfd; border-left: 5px solid ${color}; padding: 12px; margin-top: 20px; font-size: 13px; color: #444; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+            <b style="color: #2c3e50;">⚠️ Factores de Riesgo a Monitorear:</b><br><br>
+            • <b>Seguridad Perimetral:</b> Revisión estricta de perímetros y gestión de amenazas dirigidas a infraestructuras críticas.<br>
+            • <b>Saturación Vial:</b> Riesgo de congestión en las vialidades de acceso por movilizaciones o traslados simultáneos.<br>
+            • <b>Bioseguridad:</b> Necesidad de protocolos de vigilancia sanitaria por la alta concentración humana.<br>
+            • <b>Servicios de Emergencia:</b> Esta zona requiere canales de respuesta inmediata ante la alta concentración de unidades económicas.
+        </div>
+    `;
+
+    document.getElementById('panel-metodologia').classList.add('abierto');
 };

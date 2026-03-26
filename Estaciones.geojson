@@ -1,0 +1,14 @@
+{
+"type": "FeatureCollection",
+"name": "Estaciones",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "Estacion": "Zinacantepec" }, "geometry": { "type": "Point", "coordinates": [ -99.695255481708301, 19.280453580870301 ] } },
+{ "type": "Feature", "properties": { "Estacion": "Toluca" }, "geometry": { "type": "Point", "coordinates": [ -99.641781983845206, 19.2703246950142 ] } },
+{ "type": "Feature", "properties": { "Estacion": "Metepec" }, "geometry": { "type": "Point", "coordinates": [ -99.574650690925097, 19.277515358419102 ] } },
+{ "type": "Feature", "properties": { "Estacion": "Lerma" }, "geometry": { "type": "Point", "coordinates": [ -99.514962914829795, 19.278622437353398 ] } },
+{ "type": "Feature", "properties": { "Estacion": "Santa Fe" }, "geometry": { "type": "Point", "coordinates": [ -99.268053435473902, 19.364372598647101 ] } },
+{ "type": "Feature", "properties": { "Estacion": "Vasco de Quiroga" }, "geometry": { "type": "Point", "coordinates": [ -99.236811742713698, 19.384995922208201 ] } },
+{ "type": "Feature", "properties": { "Estacion": "Observatorio" }, "geometry": { "type": "Point", "coordinates": [ -99.199449027841098, 19.398793966611201 ] } }
+]
+}
