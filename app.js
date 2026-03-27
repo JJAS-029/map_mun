@@ -50,13 +50,31 @@ const METRICAS = [
     }
 ];
 
-// DICCIONARIO DE RUTAS DE MOVILIDAD
+
+// DICCIONARIO DE RUTAS DE MOVILIDAD (Actualizado Mundial 2026)
 const RUTAS_CONFIG = {
-    1: { nombre: "Carretera al Aeropuerto (AIFA)", color: "#004aad" },
-    2: { nombre: "Toluca - México", color: "#356854" },
-    3: { nombre: "Naucalpan - Toluca", color: "#ff751f" },
-    4: { nombre: "La Marquesa - México", color: "#7695ff" },
-    5: { nombre: "Tren Interurbano", color: "#e8d961" }
+    1:  { nombre: "Carretera al Aeropuerto (AIFA)", color: "#004aad" },
+    2:  { nombre: "Toluca - México", color: "#356854" },
+    3:  { nombre: "Naucalpan - Toluca", color: "#ff751f" },
+    4:  { nombre: "La Marquesa - México", color: "#7695ff" },
+    5:  { nombre: "Tren Interurbano", color: "#e8d961" },
+    6:  { nombre: "Ingreso y salida FEMEFUT", color: "#e74c3c" },
+    8:  { nombre: "Boulevard Aeropuerto", color: "#c0392b" },
+    9:  { nombre: "Boulevard Alfredo del Mazo", color: "#d35400" },
+    10: { nombre: "Avenida José María Morelos y Pavón", color: "#8e44ad" },
+    11: { nombre: "Carretera Toluca-Naucalpan (Cuota)", color: "#2980b9" },
+    12: { nombre: "Circuito Exterior Mexiquense", color: "#16a085" },
+    13: { nombre: "Carretera México-Pachuca", color: "#27ae60" },
+    14: { nombre: "Ruta Toluca - Valle de Bravo", color: "#f39c12" },
+    15: { nombre: "Ruta Lerma - Malinalco", color: "#1abc9c" },
+    16: { nombre: "Ruta a Jalisco", color: "#34495e" },
+    17: { nombre: "Ruta Toluca - Villa del Carbón", color: "#9b59b6" },
+    18: { nombre: "Ruta Jilotepec", color: "#f1c40f" },
+    19: { nombre: "Ruta Aculco", color: "#e67e22" },
+    20: { nombre: "Ruta Tepotzotlán", color: "#e84393" },
+    21: { nombre: "Ruta Otumba", color: "#00cec9" },
+    22: { nombre: "Ruta a Querétaro", color: "#2d3436" },
+    23: { nombre: "Ruta Toluca - Tonatico", color: "#fd79a8" } // Ajustado para evitar el choque con el 15
 };
 
 // DICCIONARIO DE PUEBLOS MÁGICOS
@@ -149,6 +167,10 @@ Promise.all([
     fetch('estrcturac.geojson').then(res => res.json())
 ]).then(([dataMunicipios, dataColonias, dataCarreteras, dataEstaciones, dataPueblosMagicos, dataInfraestructura]) => {
     
+
+    window.datosCarreteras = dataCarreteras;
+
+
     // --- PRE-PROCESAMIENTO: ESCANEO DE MUNICIPIOS ACTIVOS ---
     window.municipiosActivos = new Set(); // Ahora es global
     dataColonias.features.forEach(f => {
@@ -293,6 +315,17 @@ Promise.all([
 // --- C. CAPA DE RUTAS DE MOVILIDAD (FASE 3) ---
     capaRutas = L.geoJSON(dataCarreteras, {
         pmIgnore: true,
+        filter: function(feature) {
+            let p = feature.properties.Prioridad;
+            let p1 = document.getElementById('chk-prio1') ? document.getElementById('chk-prio1').checked : true;
+            let p2 = document.getElementById('chk-prio2') ? document.getElementById('chk-prio2').checked : true;
+            let p3 = document.getElementById('chk-prio3') ? document.getElementById('chk-prio3').checked : true;
+
+            if (p == 1 && !p1) return false;
+            if (p == 2 && !p2) return false;
+            if (p == 3 && !p3) return false;
+            return true; // Dibuja la línea si pasa los filtros
+        },
         style: function(feature) {
             let idRuta = feature.properties.objectid;
             let config = RUTAS_CONFIG[idRuta];
@@ -469,14 +502,28 @@ Promise.all([
 function controlarZoom() {
     let zoom = map.getZoom();
     let container = document.getElementById('map');
-
-    if (capaMunicipios) capaMunicipios.setStyle(window.estiloMunicipio);
     
+    // 1. Efecto del color de fondo de los municipios
+    if (capaMunicipios) capaMunicipios.setStyle(window.estiloMunicipio);
+
+    // 2. Etiquetas de municipios
     if (zoom >= CONFIG.zoomEtiquetasMun) container.classList.remove('ocultar-etiquetas');
     else container.classList.add('ocultar-etiquetas');
 
+    // 3. Apagar selección cian al alejarse
+    if (zoom < 13 && window.coloniaSeleccionada && capaColonias) {
+        capaColonias.resetStyle(window.coloniaSeleccionada);
+        window.coloniaSeleccionada = null;
+        document.getElementById('btn-reset-vista').style.display = 'none';
+    }
+
+    // --- EL FIX: VERIFICACIÓN ESTRICTA DEL MENÚ TÁCTICO ---
+    const chkColonias = document.getElementById('chk-colonias');
+    const coloniasPermitidas = chkColonias ? chkColonias.checked : true;
+
     if (capaColonias) {
-        if (zoom >= CONFIG.zoomParaColonias) {
+        // SOLO se dibuja si el zoom es el correcto Y el botón está prendido
+        if (zoom >= CONFIG.zoomParaColonias && coloniasPermitidas) {
             if (!map.hasLayer(capaColonias)) map.addLayer(capaColonias);
         } else {
             if (map.hasLayer(capaColonias)) {
@@ -486,9 +533,9 @@ function controlarZoom() {
         }
     }
 
-    // Encender/Apagar las píldoras flotantes con el zoom
     if (capaPildoras) {
-        if (zoom >= CONFIG.zoomParaPildoras) {
+        // Lo mismo para las bolitas flotantes de métricas
+        if (zoom >= CONFIG.zoomParaPildoras && coloniasPermitidas) {
             if (!map.hasLayer(capaPildoras)) map.addLayer(capaPildoras);
         } else {
             if (map.hasLayer(capaPildoras)) map.removeLayer(capaPildoras);
@@ -496,14 +543,6 @@ function controlarZoom() {
     }
 }
 map.on('zoomend', controlarZoom);
-
-window.resetearVista = function() {
-    map.setView(CONFIG.centroInicial, CONFIG.zoomInicial);
-    document.getElementById('btn-reset-vista').style.display = 'none';
-    if (window.coloniaSeleccionada && capaColonias && map.hasLayer(capaColonias)) {
-        capaColonias.resetStyle(window.coloniaSeleccionada); window.coloniaSeleccionada = null; 
-    }
-};
 
 // =========================================================
 // --- 6. DIBUJO Y MEDICIÓN ---
@@ -605,10 +644,22 @@ const miniMapa = new L.Control.MiniMap(new L.TileLayer('https://{s}.tile.openstr
     position: 'bottomleft', toggleDisplay: true, minimized: false, width: 150, height: 150, collapsedWidth: 25, collapsedHeight: 25, zoomLevelOffset: -5 
 }).addTo(map);
 
+// =========================================================
+// --- RETÍCULA DE COORDENADAS (GRATICULE) LIMPIA ---
+// =========================================================
 if (typeof L.latlngGraticule === 'function') {
     L.latlngGraticule({
-        showLabel: true, color: '#2c3e50', weight: 0.8, opacity: 0.5, fontColor: '#2c3e50',
-        zoomInterval: [{start: 2, end: 8, interval: 0.5}, {start: 9, end: 12, interval: 0.1}, {start: 13, end: 20, interval: 0.02}]
+        showLabel: true, 
+        color: '#2c3e50', 
+        weight: 0.8, 
+        opacity: 0.4, // Un poco más transparente para que no compita con las carreteras
+        fontColor: '#2c3e50',
+        // Ajustamos los intervalos para reducir el número de líneas y evitar decimales infinitos
+        zoomInterval: [
+            {start: 2, end: 8, interval: 1},      // Vista lejana: 1 grado (muy limpio)
+            {start: 9, end: 12, interval: 0.25},  // Vista media: saltos de 0.25 grados
+            {start: 13, end: 20, interval: 0.05}  // Vista cercana: saltos de 0.05 (adiós al 0.02 que saturaba)
+        ]
     }).addTo(map);
 }
 
@@ -655,9 +706,23 @@ const ControlCapas = L.Control.extend({
                     <input type="checkbox" id="chk-colonias" checked>
                     <label for="chk-colonias">🛡️ Nivel de Riesgo (Colonias)</label>
                 </div>
-                <div class="opcion-capa">
+                <div class="opcion-capa" style="margin-bottom: 2px;">
                     <input type="checkbox" id="chk-rutas">
-                    <label for="chk-rutas">🛣️ Corredores de Movilidad</label>
+                    <label for="chk-rutas" style="font-weight:bold;">🛣️ Corredores de Movilidad</label>
+                </div>
+                <div id="sub-menu-rutas" style="display: none; margin-left: 22px; font-size: 11.5px; margin-bottom: 8px; border-left: 2px solid #ccc; padding-left: 8px;">
+                    <div style="margin-bottom: 3px;">
+                        <input type="checkbox" id="chk-prio1" checked>
+                        <label for="chk-prio1">🔴 Prioridad 1 (Críticas)</label>
+                    </div>
+                    <div style="margin-bottom: 3px;">
+                        <input type="checkbox" id="chk-prio2" checked>
+                        <label for="chk-prio2">🔵 Prioridad 2 (Complementarias)</label>
+                    </div>
+                    <div>
+                        <input type="checkbox" id="chk-prio3" checked>
+                        <label for="chk-prio3">🟢 Prioridad 3 (Turísticas)</label>
+                    </div>
                 </div>
                 <div class="opcion-capa">
                     <input type="checkbox" id="chk-infra">
@@ -665,7 +730,7 @@ const ControlCapas = L.Control.extend({
                 </div>
                 <div class="opcion-capa">
                     <input type="checkbox" id="chk-pueblos">
-                    <label for="chk-pueblos">✨ Pueblos Mágicos</label>
+                    <label for="chk-pueblos">✨ Pueblos con Encanto</label>
                 </div>
             </div>
         `;
@@ -714,14 +779,28 @@ document.addEventListener('change', function(e) {
         }
     }
 
+    // Conectar el switch principal de Rutas
     if(e.target.id === 'chk-rutas') {
+        const subMenu = document.getElementById('sub-menu-rutas');
         if(e.target.checked) {
-            // Si marcan la casilla, dibujamos las líneas
+            subMenu.style.display = 'block'; // Mostramos el sub-menú
             if(capaRutas && !map.hasLayer(capaRutas)) map.addLayer(capaRutas);
+            if(capaEstaciones && !map.hasLayer(capaEstaciones)) map.addLayer(capaEstaciones);
         } else {
-            // Si desmarcan la casilla, las borramos del mapa
+            subMenu.style.display = 'none'; // Ocultamos el sub-menú
             if(capaRutas && map.hasLayer(capaRutas)) map.removeLayer(capaRutas);
-        }}
+            if(capaEstaciones && map.hasLayer(capaEstaciones)) map.removeLayer(capaEstaciones);
+        }
+    }
+
+    // Conectar los sub-filtros de Prioridad
+    if(['chk-prio1', 'chk-prio2', 'chk-prio3'].includes(e.target.id)) {
+        if(capaRutas && map.hasLayer(capaRutas)) {
+            // Limpiamos y redibujamos la capa para que pase por el "filter" nuevamente
+            capaRutas.clearLayers();
+            capaRutas.addData(window.datosCarreteras);
+        }
+    }
 
 
         // Conectar el switch de Rutas de Movilidad y Estaciones
@@ -861,8 +940,7 @@ window.abrirPanelPueblo = function(lugar, municipio, color) {
         <h3 style="border-bottom-color: ${color}; color: ${color};">
             ✨ ${lugar}
         </h3>
-        <h4 style="margin-top: 5px; color: #555;">Pueblo Mágico: ${municipio}</h4>
-        
+        <h4 style="margin-top: 5px; color: #555;">Pueblo con Encanto: ${municipio}</h4>
         <p style="font-size: 14px; color: #333; text-align: justify; margin-top: 15px;">
             Durante el Mundial 2026, los Pueblos Mágicos y destinos turísticos del Estado de México podrían registrar incrementos atípicos en la afluencia, lo que eleva la exposición a delitos patrimoniales y de alto impacto, especialmente en zonas de alta concentración y accesos carreteros.
         </p>
