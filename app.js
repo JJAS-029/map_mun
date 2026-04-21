@@ -544,6 +544,15 @@ function controlarZoom() {
 }
 map.on('zoomend', controlarZoom);
 
+window.resetearVista = function() {
+    map.setView(CONFIG.centroInicial, CONFIG.zoomInicial);
+    document.getElementById('btn-reset-vista').style.display = 'none';
+    if (window.coloniaSeleccionada && capaColonias && map.hasLayer(capaColonias)) {
+        capaColonias.resetStyle(window.coloniaSeleccionada); 
+        window.coloniaSeleccionada = null; 
+    }
+};
+
 // =========================================================
 // --- 6. DIBUJO Y MEDICIÓN ---
 // =========================================================
