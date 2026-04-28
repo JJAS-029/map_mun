@@ -272,11 +272,19 @@ Promise.all([
                 }
             });
             // Cerrar el HTML del popup con el Total
+            // Cerrar el HTML del popup con el Total y su Etiqueta de Riesgo
+            let nivelRiesgo = p.pondera ? p.pondera.toUpperCase() : 'N/A';
+            let colorTotal = getColorPondera(p.pondera) || '#333';
+
             popupHTML += `
-                <li style="margin-top: 8px; border-top: 2px solid #ccc; padding-top: 6px;">
+                <li style="margin-top: 8px; border-top: 2px solid #ccc; padding-top: 6px; display: flex; justify-content: space-between; align-items: center;">
                     <strong>TOTAL</strong>
-                    <strong style="font-size: 14px; color: ${getColorPondera(p.pondera) || '#333'};">${total}</strong>
+                    <strong style="font-size: 14px; color: ${colorTotal}; background: ${colorTotal}20; padding: 2px 6px; border-radius: 4px; border: 1px solid ${colorTotal}50;">
+                        ${total} (${nivelRiesgo})
+                    </strong>
                 </li></ul></div>`;
+
+            layer.bindPopup(popupHTML);
 
             layer.bindPopup(popupHTML);
             // 3. Crear el marcador de Píldora en el Centroide de la colonia
