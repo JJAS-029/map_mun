@@ -574,7 +574,19 @@ function cargarEventosEnTiempoReal() {
                     zIndexOffset: 1000 // Siempre por encima de todo lo demás
                 });
 
-                // Globo de Información (Ficha del Incidente)
+                // NUEVO: Generador del Botón de Enlace (Solo aparece si el analista pegó un link)
+                let botonEnlaceHTML = '';
+                if (evento.Enlace && evento.Enlace.trim() !== '') {
+                    botonEnlaceHTML = `
+                        <div style="margin-top: 10px; text-align: center;">
+                            <a href="${evento.Enlace.trim()}" target="_blank" style="display: inline-block; background: ${colorBase}; color: white; padding: 5px 12px; text-decoration: none; border-radius: 4px; font-size: 11px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                                🔗 Ver Noticia Original
+                            </a>
+                        </div>
+                    `;
+                }
+
+                // Globo de Información (Ficha del Incidente Actualizada)
                 marcadorAlerta.bindPopup(`
                     <div style="min-width: 220px; font-family: 'Arial', sans-serif;">
                         <div style="background: ${colorBase}; color: white; padding: 6px 10px; border-radius: 4px 4px 0 0; display: flex; justify-content: space-between; align-items: center;">
@@ -590,6 +602,7 @@ function cargarEventosEnTiempoReal() {
                             <p style="margin: 0; font-size: 13px; color: #333; text-align: justify;">
                                 <i>"${evento.Descripcion || 'Sin descripción táctica.'}"</i>
                             </p>
+                            ${botonEnlaceHTML}
                         </div>
                     </div>
                 `, { closeButton: false }); // Quitamos el botón "x" feo por defecto para que se vea más limpio
