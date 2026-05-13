@@ -225,6 +225,16 @@
         /* Ocultamos este menú a la hora de imprimir */
         @media print { .panel-capas-custom { display: none !important; } }
 
+        /* ANIMACIÓN PARA EVENTOS EN TIEMPO REAL */
+        @keyframes latido-rojo {
+            0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+        }
+        .animacion-pulso-rojo {
+            animation: latido-rojo 1.5s infinite;
+        }
+
     </style>
 </head>
 <body>

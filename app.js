@@ -271,20 +271,18 @@ Promise.all([
                     tieneBolitas = true;
                 }
             });
-            // Cerrar el HTML del popup con el Total
-            // Cerrar el HTML del popup con el Total y su Etiqueta de Riesgo
+            
+            // Cerrar el HTML del popup con el Total y su Etiqueta de Riesgo (Con Contorno Negro)
             let nivelRiesgo = p.pondera ? p.pondera.toUpperCase() : 'N/A';
             let colorTotal = getColorPondera(p.pondera) || '#333';
 
             popupHTML += `
                 <li style="margin-top: 8px; border-top: 2px solid #ccc; padding-top: 6px; display: flex; justify-content: space-between; align-items: center;">
                     <strong>TOTAL</strong>
-                    <strong style="font-size: 14px; color: ${colorTotal}; background: ${colorTotal}20; padding: 2px 6px; border-radius: 4px; border: 1px solid ${colorTotal}50;">
+                    <strong style="font-size: 14px; color: ${colorTotal}; background: ${colorTotal}20; padding: 2px 6px; border-radius: 4px; border: 1px solid ${colorTotal}50; -webkit-text-stroke: 0.5px black; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); letter-spacing: 0.5px;">
                         ${total} (${nivelRiesgo})
                     </strong>
                 </li></ul></div>`;
-
-            layer.bindPopup(popupHTML);
 
             layer.bindPopup(popupHTML);
             // 3. Crear el marcador de Píldora en el Centroide de la colonia
@@ -399,6 +397,12 @@ Promise.all([
                     <span style="font-size:12px; color:#666;">${nombreEstacion}</span>
                 </div>
             `, { direction: 'top', offset: [0, -15], className: 'etiqueta-ruta' });
+
+            // NUEVA ACCIÓN: Al darle clic, abrimos el panel táctico
+            layer.on('click', function() {
+                // Le anteponemos "Estación" para que nuestra función la detecte inteligentemente
+                window.abrirPanelInfraestructura("Estación " + nombreEstacion);
+            });
         }
     });
 
@@ -503,6 +507,104 @@ Promise.all([
     document.getElementById('loader-overlay').innerHTML = `<h3 style="color:red;">Error cargando los mapas.</h3>`;
 });
 
+// =========================================================
+// --- CAPA DINÁMICA: EVENTOS EN TIEMPO REAL (GOOGLE SHEETS) ---
+// =========================================================
+
+// Usamos el export nativo a CSV de Google Sheets
+const urlCSVEventos = "https://docs.google.com/spreadsheets/d/1fb4jW9wez7FSYuoLaaFrvYv5f3xEsxCtkzHGiIhiUOs/export?format=csv";
+window.capaEventos = L.layerGroup().addTo(map); // La añadimos prendida por defecto
+
+// Un pequeño traductor nativo para leer el CSV del Excel
+function parsearCSV(str) {
+    const arr = []; let quote = false;
+    for (let row = 0, col = 0, c = 0; c < str.length; c++) {
+        let cc = str[c], nc = str[c+1];
+        arr[row] = arr[row] || []; arr[row][col] = arr[row][col] || '';
+        if (cc == '"' && quote && nc == '"') { arr[row][col] += cc; ++c; continue; }
+        if (cc == '"') { quote = !quote; continue; }
+        if (cc == ',' && !quote) { ++col; continue; }
+        if (cc == '\r' && nc == '\n' && !quote) { ++row; col = 0; ++c; continue; }
+        if (cc == '\n' && !quote) { ++row; col = 0; continue; }
+        if (cc == '\r' && !quote) { ++row; col = 0; continue; }
+        arr[row][col] += cc;
+    }
+    const headers = arr[0]; const data = [];
+    for (let i = 1; i < arr.length; i++) {
+        let obj = {};
+        for (let j = 0; j < headers.length; j++) { if(headers[j]) obj[headers[j].trim()] = arr[i][j] ? arr[i][j].trim() : ''; }
+        if(Object.keys(obj).length > 0 && obj[headers[0]]) data.push(obj);
+    }
+    return data;
+}
+
+function cargarEventosEnTiempoReal() {
+    fetch(urlCSVEventos)
+        .then(res => res.text())
+        .then(csvText => {
+            let datosEventos = parsearCSV(csvText);
+            capaEventos.clearLayers(); // Borramos los pines viejos para poner los actualizados
+            
+            datosEventos.forEach(evento => {
+                let estatus = evento.Estatus ? evento.Estatus.toUpperCase() : '';
+                
+                // REGLA DE ORO: Si está Finalizado, lo ignoramos por completo
+                if(estatus.includes('FINALIZADO')) return; 
+                if(!evento.coordenadas) return;
+
+                // --- TU MAGIA: Separamos "Latitud, Longitud" automáticamente ---
+                let partesCoord = evento.coordenadas.split(',');
+                if(partesCoord.length !== 2) return; 
+                let lat = parseFloat(partesCoord[0].trim());
+                let lng = parseFloat(partesCoord[1].trim());
+
+                // Estilos Tácticos: Activo (Rojo Latiente) vs Controlado (Amarillo Estático)
+                let isActivo = estatus.includes('ACTIVO');
+                let colorBase = isActivo ? '#e74c3c' : '#f1c40f';
+                let animacion = isActivo ? 'animacion-pulso-rojo' : '';
+                let emoji = isActivo ? '🚨' : '⚠️';
+
+                let iconoAlertaHTML = `
+                    <div class="${animacion}" style="background: ${colorBase}; color: white; border-radius: 50%; border: 2px solid white; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">
+                        ${emoji}
+                    </div>`;
+                
+                let marcadorAlerta = L.marker([lat, lng], {
+                    icon: L.divIcon({ html: iconoAlertaHTML, className: '', iconSize: [32, 32], iconAnchor: [16, 16] }),
+                    zIndexOffset: 1000 // Siempre por encima de todo lo demás
+                });
+
+                // Globo de Información (Ficha del Incidente)
+                marcadorAlerta.bindPopup(`
+                    <div style="min-width: 220px; font-family: 'Arial', sans-serif;">
+                        <div style="background: ${colorBase}; color: white; padding: 6px 10px; border-radius: 4px 4px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: bold; font-size: 14px;">${emoji} ${evento.Tipo_Evento || 'Evento'}</span>
+                            <span style="font-size: 11px; opacity: 0.9;">${evento.ID_Evento || ''}</span>
+                        </div>
+                        <div style="padding: 10px; border: 1px solid #ddd; border-top: none; border-radius: 0 0 4px 4px; background: white;">
+                            <p style="margin: 0 0 6px 0; font-size: 13px;"><b>Estatus:</b> <span style="color: ${colorBase}; font-weight: 800;">${evento.Estatus}</span></p>
+                            <p style="margin: 0 0 6px 0; font-size: 13px;"><b>Impacto:</b> ${evento.Nivel_Impacto || 'N/A'}</p>
+                            <p style="margin: 0 0 6px 0; font-size: 13px;"><b>Ubicación:</b> ${evento.Ubicacion || 'No especificada'}</p>
+                            <p style="margin: 0 0 6px 0; font-size: 12px; color: #666;"><b>Inicio:</b> ${evento.Fecha_Hora || 'N/A'}</p>
+                            <hr style="margin: 8px 0; border: 0; border-top: 1px dashed #ccc;">
+                            <p style="margin: 0; font-size: 13px; color: #333; text-align: justify;">
+                                <i>"${evento.Descripcion || 'Sin descripción táctica.'}"</i>
+                            </p>
+                        </div>
+                    </div>
+                `, { closeButton: false }); // Quitamos el botón "x" feo por defecto para que se vea más limpio
+
+                capaEventos.addLayer(marcadorAlerta);
+            });
+        })
+        .catch(err => console.error("Fallo de conexión al servidor de eventos:", err));
+}
+
+// 1. Cargamos al iniciar el mapa
+cargarEventosEnTiempoReal();
+
+// 2. MAGIA AUTOMÁTICA: Le decimos al mapa que se actualice solo, silenciosamente, cada 3 minutos (180,000 milisegundos)
+setInterval(cargarEventosEnTiempoReal, 180000);
 
 // =========================================================
 // --- 5. LÓGICA DE VISIBILIDAD (Píldoras y Etiquetas) ---
@@ -717,8 +819,12 @@ const ControlCapas = L.Control.extend({
                 <span>📋 Capas Tácticas</span>
                 <span id="flecha-capas" style="font-size: 10px; margin-left: 15px;">▼</span>
             </div>
-            
+                
             <div id="contenedor-opciones-capas" style="margin-top: 10px; display: none; border-top: 2px solid #2c3e50; padding-top: 10px;">
+                <div class="opcion-capa style="margin-bottom: 2px;">
+                    <input type="checkbox" id="chk-eventos" checked>
+                    <label for="chk-eventos" style="font-weight:bold; color:#c0392b;">🚨 Eventos en Tiempo Real</label>
+                </div>
                 <div class="opcion-capa">
                     <input type="checkbox" id="chk-colonias" checked>
                     <label for="chk-colonias">🛡️ Nivel de Riesgo (Colonias)</label>
@@ -771,10 +877,12 @@ const ControlCapas = L.Control.extend({
             }
         });
 
+        
         return div;
     }
 });
 map.addControl(new ControlCapas());
+
 
 // Conectar el "switch" de Colonias a nuestro mapa
 document.addEventListener('change', function(e) {
@@ -854,7 +962,14 @@ document.addEventListener('change', function(e) {
         }
     }
 
-    // NOTA: Los otros switches ('chk-rutas', etc.) los conectaremos en la Fase 3
+   // Conectar el switch de Eventos en Tiempo Real
+    if(e.target.id === 'chk-eventos') {
+        if(e.target.checked) {
+            if(typeof capaEventos !== 'undefined' && !map.hasLayer(capaEventos)) map.addLayer(capaEventos);
+        } else {
+            if(typeof capaEventos !== 'undefined' && map.hasLayer(capaEventos)) map.removeLayer(capaEventos);
+        }
+    } // NOTA: Los otros switches ('chk-rutas', etc.) los conectaremos en la Fase 3
 });
 
 // =========================================================
@@ -975,36 +1090,75 @@ window.abrirPanelPueblo = function(lugar, municipio, color) {
     document.getElementById('panel-metodologia').classList.add('abierto');
 };
 
-// NUEVA FUNCIÓN: Abre el panel para la Infraestructura Crítica
+    // NUEVA FUNCIÓN MEJORADA: Abre el panel para la Infraestructura Crítica con contenido dinámico
 window.abrirPanelInfraestructura = function(nombre) {
     const contenido = document.getElementById('contenido-metodologia');
     
-    // Asignamos colores y subtítulos al panel según el tipo
+    // Variables por defecto
     let color = '#34495e';
     let tipo = 'Instalación Estratégica';
+    let icono = '🏢';
+    let textoContexto = '';
+    let textoRiesgos = '';
+    
     let nomUpper = nombre.toUpperCase();
     
-    if(nomUpper.includes('AEROPUERTO')) { color = '#2980b9'; tipo = 'Nodo de Movilidad Internacional'; }
-    else if(nomUpper.includes('ESTADIO')) { color = '#c0392b'; tipo = 'Sede Deportiva'; }
-    else if(nomUpper.includes('HOTEL')) { color = '#f39c12'; tipo = 'Sede de Hospedaje'; }
-    else if(nomUpper.includes('FEDERACIÓN')) { color = '#27ae60'; tipo = 'Centro de Operaciones'; }
+    // Lógica de personalización táctica según la sede
+    // Lógica de personalización táctica según la sede para la salida de datos_georreferenciados
+    if(nomUpper.includes('AEROPUERTO') || nomUpper.includes('AIFA') || nomUpper.includes('AIT') || nomUpper.includes('AICM')) { 
+        color = '#2980b9'; tipo = 'Nodo de Movilidad Internacional'; icono = '✈️';
+        textoContexto = 'Puntos críticos liderados por SEMAR y la Guardia Nacional. El AIFA opera con FBO para privacidad de delegaciones, el AIT funge como base para cápsulas de seguridad chárter, y el AICM concentra el flujo masivo con controles biométricos.';
+        textoRiesgos = `• <b>Filtros de Seguridad:</b> Verificación exhaustiva de credenciales en plataforma y Módulo 11 (AICM).<br>
+                        • <b>Control Operativo:</b> Manejo riguroso de slots de aterrizaje/despegue en días de partido para evitar saturación.<br>
+                        • <b>Respuesta Rápida:</b> Activación de protocolos de evacuación médica y antisabotaje (Fuerza de Tarea Conjunta "Quetzalcóatl").`;
+    }
+    else if(nomUpper.includes('ESTADIO')) { 
+        color = '#c0392b'; tipo = 'Sede Deportiva'; icono = '🏟️';
+        textoContexto = 'Epicentro del operativo. Funciona bajo un esquema de cuatro cinturones concéntricos y cuenta con protocolos anti-sismo integrados con la alerta temprana y sistemas redundantes de comunicación.';
+        textoRiesgos = `• <b>Última Milla y Perímetros:</b> Zona de exclusión vehicular de 3 km, 4 filtros de acceso digital, detectores de metales y unidades K9 de explosivos.<br>
+                        • <b>Gestión de Masas:</b> Regulación de flujos apoyada por videovigilancia e identificación facial para evitar estampidas.<br>
+                        • <b>Vulnerabilidad Aérea:</b> Prohibición absoluta de drones en 3 km de radio, con intercepción electrónica activa y multas federales.`;
+    }
+    else if(nomUpper.includes('HOTEL')) { 
+        color = '#f39c12'; tipo = 'Sede de Hospedaje'; icono = '🏨';
+        textoContexto = 'Zonas operadas bajo el esquema de "Instalación Estratégica" con resguardo 24/7 por seguridad privada y Guardia Nacional, integradas a las redes de videovigilancia del C5.';
+        textoRiesgos = `• <b>Control de Accesos y Prevención:</b> Filtros estrictos para personal y prevención activa contra la explotación infantil (líneas de denuncia 24 h).<br>
+                        • <b>Rutas de Escape:</b> Evacuación discreta de equipos hacia estadios o aeropuertos sin contacto masivo.<br>
+                        • <b>Monitoreo Exterior:</b> Contención de multitudes y prevención de "serenatas" nocturnas para garantizar descanso táctico.`;
+    }
+    else if(nomUpper.includes('FEDERACIÓN') || nomUpper.includes('FMF') || nomUpper.includes('ENTRENAMIENTO')) { 
+        color = '#27ae60'; tipo = 'Centro de Operaciones y Entrenamiento'; icono = '⚽';
+        textoContexto = 'Instalaciones que requieren "Privacidad Táctica" estricta para entrenamientos a puerta cerrada, asegurando aislamiento total entre delegaciones y público general.';
+        textoRiesgos = `• <b>Anti-Espionaje:</b> Implementación de tecnología inhibidora de señales y bloqueo visual perimetral completo.<br>
+                        • <b>Control Perimetral:</b> Ingreso exclusivo y blindado para autobuses oficiales.<br>
+                        • <b>Logística Interna:</b> Protección continua a cuerpo técnico, directivos y zonas de utilería estratégica.`;
+    }
+    else if(nomUpper.includes('ESTACIÓN') || nomUpper.includes('TREN') || nomUpper.includes('METRO') || nomUpper.includes('OBSERVATORIO')) {
+        color = '#e8d961'; tipo = 'Estación de Transporte Masivo'; icono = '🚆';
+        textoContexto = 'Nodos logísticos como el Tren Interurbano y Metro (ej. Observatorio), esenciales para conectar eficientemente delegaciones y aficionados, custodiados por Policía Turística y de Género.';
+        textoRiesgos = `• <b>Escáneres de Seguridad:</b> Detección de armas blancas o de fuego mediante alertas visuales/sonoras en los accesos.<br>
+                        • <b>Aglomeraciones:</b> Protocolos de conducción de flujos para prevenir aplastamientos en andenes y escaleras en horas pico.<br>
+                        • <b>Rastreo Preventivo:</b> Operativos con Policía Bancaria e Industrial (PBI) y binomios caninos en botes de basura y equipajes.`;
+    }
+    else {
+        color = '#95a5a6'; tipo = 'Infraestructura de Soporte'; icono = '📍';
+        textoContexto = 'Infraestructura crítica integrada a la red de protección del Plan Kukulcán. Requiere evaluación constante de su entorno inmediato.';
+        textoRiesgos = '• <b>Monitoreo Activo:</b> Vigilancia perimetral en coordinación con el sistema nervioso del operativo (C5) y mandos locales.';
+    }
 
     contenido.innerHTML = `
         <h3 style="border-bottom-color: ${color}; color: ${color};">
-            🏢 ${nombre}
+            ${icono} ${nombre}
         </h3>
         <h4 style="margin-top: 5px; color: #555;">${tipo}</h4>
         
         <p style="font-size: 14px; color: #333; text-align: justify; margin-top: 15px;">
-            El diagnóstico operativo identifica a esta instalación como un nodo de máxima prioridad. Las sedes de hospedaje, aeropuertos y estadios requieren monitoreo permanente mediante perímetros de seguridad debido a la concentración masiva y la movilidad de delegaciones internacionales.
+            ${textoContexto}
         </p>
         
         <div style="background: #fdfdfd; border-left: 5px solid ${color}; padding: 12px; margin-top: 20px; font-size: 13px; color: #444; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
             <b style="color: #2c3e50;">⚠️ Factores de Riesgo a Monitorear:</b><br><br>
-            • <b>Seguridad Perimetral:</b> Revisión estricta de perímetros y gestión de amenazas dirigidas a infraestructuras críticas.<br>
-            • <b>Saturación Vial:</b> Riesgo de congestión en las vialidades de acceso por movilizaciones o traslados simultáneos.<br>
-            • <b>Bioseguridad:</b> Necesidad de protocolos de vigilancia sanitaria por la alta concentración humana.<br>
-            • <b>Servicios de Emergencia:</b> Esta zona requiere canales de respuesta inmediata ante la alta concentración de unidades económicas.
+            ${textoRiesgos}
         </div>
     `;
 
